@@ -1,0 +1,115 @@
+docker-flask-app
+├── app
+│   ├── app.py
+│   ├── Dockerfile
+│   └── requirements.txt
+├── db
+│   └── init.sql
+└── docker-compose.yml
+
+
+APP:
+
+app.py
+
+
+
+
+import mysql.connector
+import json
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route('/')
+def hello_world():
+    return 'Hello, Docker!'
+
+
+   
+
+@app.route('/initdb')
+def db_init():
+    mydb = mysql.connector.connect(
+        host="mysqldb",
+        user="root",
+        password="kumar@1234567"
+    )
+    cursor = mydb.cursor()
+
+    cursor.execute("DROP DATABASE IF EXISTS database7")
+    cursor.execute("CREATE DATABASE database7")
+    cursor.execute("USE database7")
+
+    cursor.execute("DROP TABLE IF EXISTS travel")
+    cursor.execute("CREATE TABLE travel (id INT NOT NULL,name VARCHAR(50) NOT NULL, place VARCHAR(50) NOT NULL,
+    destination VARCHAR(50) NOT NULL)")
+    cursor.close()
+
+    return 'init database'
+
+if __name__ == "__main__":
+    app.run(host ='0.0.0.0')
+
+
+Dockerfile
+
+
+FROM python:3.9
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install  -r requirements.txt
+COPY . .
+CMD ["python", "app.py"]
+
+
+requirements.txt
+
+Flask==2.0.3
+mysql-connector-python==20.8.6
+
+
+DB
+
+init.sql
+
+
+
+CREATE DATABASE IF NOT EXISTS database7;
+USE database7;
+
+CREATE TABLE IF NOT EXISTS travel (
+   id INT NOT NULL,
+   name VARCHAR(50) NOT NULL,
+   place VARCHAR(50) NOT NULL,
+   destination VARCHAR(50) NOT NULL
+);
+
+INSERT INTO travel (id, name, place, destination) VALUES (100, 'kumar', 'pkl', 'hyd');
+INSERT INTO travel (id, name, place, destination) VALUES (101, 'anil', 'ped', 'vizag');
+
+
+
+Docker-compose.yml
+
+version: '3'
+services:
+  pythonapp:
+    build: ./python/
+    command: sh -c "sleep 10s ; python3 ./app.py"
+    depends_on:
+      - mysql
+
+  mysql:
+    build: ./mysql/
+    restart: always
+    environment:
+        MYSQL_DATABASE: 'db'
+        MYSQL_ROOT_PASSWORD: 'root'
+    ports:
+      - '3307:3306'
+
+
+ mysql -h localhost -u root -p           
+
+docker-compose up
