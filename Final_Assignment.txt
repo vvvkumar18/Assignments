@@ -1,0 +1,194 @@
+# Dockerfile
+
+FROM python:3.9
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install  -r requirements.txt
+COPY . .
+CMD ["python", "app2.py"]
+
+
+
+
+
+
+# app.py
+
+
+from flask import Flask,request
+import mysql.connector
+
+app = Flask(__name__)
+  
+
+
+
+
+@app.route('/travel', methods=['POST'])
+def insert():
+    try:
+
+        connection = mysql.connector.connect(user='root', password='root', host='db', port='3306', database='database7')
+        cursor = connection.cursor()
+        data = request.get_json()
+        id = data['id']
+        name = data['name']
+        place = data['place']
+        user_drop = data['destination']
+
+        sql = "INSERT INTO travel (id, name, place, destination) VALUES (%s, %s, %s, %s)"
+        values = (id, name, place, user_drop)
+
+        cursor.execute(sql, values)
+        connection.commit()
+
+        return "Data Insert Success"
+    except Exception as e:
+        return("An error occurred: {str(e)}")
+
+
+
+
+@app.route('/travel/<int:id>', methods=['PUT'])
+def update(id):
+    try:
+        connection = mysql.connector.connect(user='root', password='root', host='db', port='3306', database='database7')
+        cursor = connection.cursor()
+        data = request.get_json()
+        name = data['name']
+        place = data['place']
+        user_drop = data['destination']
+
+        sql = "UPDATE travel SET name = %s, place = %s, destination = %s WHERE id = %s"
+        values = (name, place, user_drop, id)
+        cursor.execute(sql, values)
+        connection.commit()
+
+        return("Data Update Success")
+
+    except Exception as e:
+        # Handle other exceptions
+        return("Error: {e}")
+
+
+@app.route('/travel', methods=['GET'])
+def select():
+    try:
+        connection = mysql.connector.connect(user='root', password='root', host='db', port='3306', database='database7')
+        cursor = connection.cursor()
+
+        cursor.execute('SELECT * FROM travel')
+        results = [{'id': id, 'name': name, 'place': place, 'destination': destination} for (id, name, place, destination) in cursor]
+
+        cursor.close()
+        connection.close()
+
+        return results
+
+
+    except Exception as e:
+        return("Error: {e}")
+
+
+
+
+       
+
+@app.route('/travel/<int:id>', methods=['GET'])
+def select_travel(id):
+    try:
+        connection = mysql.connector.connect(user='root', password='root', host='db', port='3306', database='database7')
+        cursor = connection.cursor()
+        query = "SELECT id, name, place, destination FROM travel WHERE id = %s"
+        cursor.execute(query, (id,))
+        row = cursor.fetchone()
+
+        if row:
+            travel = {
+                'id': row[0],
+                'name': row[1],
+                'place': row[2],
+                'destination': row[3]
+            }
+            return(travel)
+        else:
+            return('Travel not found'), 404
+
+    except Exception as e:
+        return({'error': str(e)}), 500
+
+
+
+
+
+
+
+@app.route('/travel/<int:id>', methods=['DELETE'])
+def delete(id):
+    try:
+        connection = mysql.connector.connect(user='root', password='root', host='db', port='3306', database='database7')
+        cursor = connection.cursor()
+        sql = "DELETE FROM travel WHERE id = %s"
+        value = (id,)
+        cursor.execute(sql, value)
+        connection.commit()
+        cursor.close()
+        return("Data Delete Success")
+
+    except Exception as e:
+        return("Unexpected error occurred: {e}")
+
+
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0')
+
+requirements.txt
+
+Flask
+mysql-connector
+
+
+
+# DB
+
+
+#init.sql
+
+
+CREATE DATABASE database7;
+USE database7;
+
+CREATE TABLE travel (
+   id INT NOT NULL,
+   name VARCHAR(50),
+   place VARCHAR(50),
+   destination VARCHAR(50) 
+);
+
+INSERT INTO travel (id, name, place, destination) VALUES (100, 'kumar', 'pkl', 'hyd'),(101, 'anil', 'ped', 'vizag');
+
+
+#docker-compose.yml
+
+
+
+
+version: "3"
+services:
+  app:
+    build: ./app
+    links:
+      - db
+    ports:
+      - "5000:5000"
+
+  db:
+    image: mysql:5.7
+    ports:
+      - "32000:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d/:ro
